@@ -7,9 +7,7 @@
   
   <!-- ======================= CSS STYLES ======================= -->
   <style>
-    :root {
-      --primary-color: #0d6efd; --success-color: #198754; --secondary-color: #6c757d; --danger-color: #dc3545; --light-gray: #f8f9fa; --dark-gray: #343a40; --border-color: #dee2e6; --box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
+    :root { --primary-color: #0d6efd; --success-color: #198754; --secondary-color: #6c757d; --danger-color: #dc3545; --light-gray: #f8f9fa; --dark-gray: #343a40; --border-color: #dee2e6; --box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--light-gray); margin: 0; color: var(--dark-gray); }
     .container { max-width: 1300px; margin: 20px auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: var(--box-shadow); }
     header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
@@ -32,7 +30,7 @@
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
     .modal-content { background-color: #fefefe; margin: 5% auto; padding: 25px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: 8px; box-shadow: var(--box-shadow); }
     .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; } .close-btn:hover, .close-btn:focus { color: black; }
-    #student-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 20px; }
+    #student-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 20px; max-height: 60vh; overflow-y:auto; padding:5px; }
     .form-group { display: flex; flex-direction: column; } .form-group label { margin-bottom: 5px; font-size: 14px; }
     .form-group input, .form-group select { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 14px; width: 100%; box-sizing: border-box; }
     .modal-actions { margin-top: 25px; text-align: right; }
@@ -74,19 +72,20 @@
   </div>
 
   <!-- Firebase and PapaParse Libraries -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
   <!-- ======================= JAVASCRIPT LOGIC ======================= -->
   <script>
-    // Firebase Configuration
+    // Firebase Configuration (with CORRECT databaseURL)
     const firebaseConfig = {
       apiKey: "AIzaSyBZB9fp4uzDCt_p-JplXbhBSvpN2VIEMuo",
       authDomain: "fire-school-system.firebaseapp.com",
-      databaseURL: "https://fire-school-system-default-rtdb.firebaseio.com", 
+      // YEH SABSE ZAROORI FIX HAI. AAPKA DATABASE ASIA MEIN HAI.
+      databaseURL: "https://fire-school-system-default-rtdb.asia-southeast1.firebasedatabase.app", 
       projectId: "fire-school-system",
-      storageBucket: "fire-school-system.firebasestorage.app",
+      storageBucket: "fire-school-system.appspot.com",
       messagingSenderId: "347824878089",
       appId: "1:347824878089:web:849723e99c9e44c92d3ed8"
     };
@@ -123,13 +122,12 @@
         showLoader(false);
       }, (error) => {
           console.error("Firebase Read Error:", error);
-          noDataMsg.textContent = "Error: Cannot connect. Please check Firebase Rules.";
+          noDataMsg.textContent = "Error: Cannot connect. Please check Firebase Rules and Authorized Domains.";
           noDataMsg.style.display = 'block';
           showLoader(false);
       });
     });
 
-    // Rendering Functions
     function renderFilteredStudents() {
       const selectedGrade = gradeSelect.value;
       const selectedSection = sectionSelect.value;
@@ -142,7 +140,6 @@
         noDataMsg.style.display = 'block';
         return;
       }
-
       const studentArray = Object.keys(allStudents).map(key => ({ id: key, ...allStudents[key] }));
       let filteredStudents = studentArray.filter(s => s.Grade === selectedGrade && s.Section === selectedSection);
       filteredStudents.sort((a, b) => (a["Student's first name"] || '').localeCompare(b["Student's first name"] || ''));
@@ -160,7 +157,6 @@
         dataContainer.style.display = 'none'; noDataMsg.textContent = "No students found for this class."; noDataMsg.style.display = 'block';
       }
     }
-
     function populateFilters() {
       const students = Object.values(allStudents);
       const grades = [...new Set(students.map(s => s.Grade).filter(Boolean))].sort();
@@ -168,21 +164,15 @@
       populateSelect(gradeSelect, grades, 'Select Grade');
       populateSelect(sectionSelect, sections, 'Select Section');
     }
-
-    // CRUD Functions
     function saveStudent(event) {
       event.preventDefault();
       const formData = new FormData(studentForm);
       const studentData = {};
       HEADERS.forEach(header => { if (header !== 'Roll No.') studentData[header] = formData.get(header); });
-      
       const promise = currentStudentId ? database.ref('students/' + currentStudentId).update(studentData) : database.ref('students').push(studentData);
       promise.then(() => { alert('Saved!'); closeModal(document.getElementById('student-modal')); }).catch(error => alert('Error: ' + error.message));
     }
-
     window.deleteStudent = (studentId) => { if (confirm('Are you sure?')) database.ref('students/' + studentId).remove(); }
-    
-    // Event Listeners & UI Setup
     function buildStaticParts() {
       studentTableHead.innerHTML = `<tr><th>${HEADERS.join('</th><th>')}</th><th>Actions</th></tr>`;
       studentForm.innerHTML = HEADERS.filter(h => h !== 'Roll No.').map(header => {
@@ -191,7 +181,6 @@
       }).join('');
       document.getElementById('export-checkbox-container').innerHTML = HEADERS.map(h => `<label class="checkbox-item"><input type="checkbox" value="${h}" checked>${h}</label>`).join('');
     }
-  
     function setupEventListeners() {
       gradeSelect.addEventListener('change', renderFilteredStudents);
       sectionSelect.addEventListener('change', renderFilteredStudents);
@@ -199,15 +188,12 @@
       document.getElementById('save-student-btn').addEventListener('click', saveStudent);
       document.querySelectorAll('.close-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
     }
-    
-    // Modal Functions
     function openAddModal() {
       currentStudentId = null;
       document.getElementById('modal-title').textContent = 'Add New Student';
       studentForm.reset();
       openModal(document.getElementById('student-modal'));
     }
-
     window.openEditModal = (studentId) => {
       currentStudentId = studentId;
       const student = allStudents[studentId];
@@ -217,8 +203,6 @@
       });
       openModal(document.getElementById('student-modal'));
     }
-    
-    // Helper Functions
     function populateSelect(selectEl, items, defaultText) {
       const currentValue = selectEl.value;
       selectEl.innerHTML = `<option value="">-- ${defaultText} --</option>`;
